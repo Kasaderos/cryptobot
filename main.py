@@ -57,7 +57,7 @@ def get_data():
     return np.array(times), np.array(prices).astype(np.float64)
 
 def predict():
-    p = 5 
+    p = 1 
     _, ts = get_data()
 
     preds = LM(ts, p)
@@ -69,29 +69,29 @@ def get_price():
     return float(d['price'])
 
 def open_position():
-    global last_price
-    while True:
-        predPrice = predict()
-        price = get_price()
-        # long position
-        if predPrice > price and 1 - price/predPrice < profit:
-            try:
-                cache.buy(10.0)
-                return price
-            except Exception as e:
-                print(e)
-        time.sleep(10)
+    global BULL
+    predPrice = predict()
+    price = get_price()
+    # long position
+    if predPrice >= price:
+        BULL = True
+        print(f"up {predPrice} {price}")
+    else:
+        BULL = False 
+        print(f"down {predPrice} {price}")
+    time.sleep(SLEEP_DURATION)
+    return price
+        
 
-def close_position(buy_price):
-    while True:
-        price = get_price()
-        if price >= buy_price:
-            try:
-                cache.sell(cache.crypto)
-                return
-            except Exception as e:
-                print(e)
-        time.sleep(SLEEP_DURATION)
+def close_position(lastPrice):
+    global score
+    price = get_price()
+    if price >= lastPrice and BULL or price < lastPrice and not BULL:
+        score += 1
+        print(f"+ {price}")
+
+    if price < lastPrice and BULL or price >= lastPrice and not BULL:
+        print(f"- {price}")
 
 api_key = ''
 api_secret = ''
@@ -99,20 +99,19 @@ CURRENCY = 'BTC'
 PAIR = 'BTCUSDT'
 INTERVAL = Client.KLINE_INTERVAL_5MINUTE
 SUM = 11 # dollars
-SLEEP_DURATION = 10 # secs
+SLEEP_DURATION = 5 * 60 # secs
 
-# buffer
-last_price = None
-
+BULL = True
 profit = 0.003
 coms = 0.001
 
 client = Client(api_key, api_secret)
-   
+score = 0
+
 if __name__ == '__main__':
-    cache = Cache(SUM, coms)
-    print(f"{cache.dollars} $")
+    t = 0
     while True:
-        open_price = open_position()
-        close_position(open_price)
-        print(f"[bot] {cache.dollars} $")
+        lastPrice = open_position()
+        close_position(lastPrice)
+        t += 1
+        print(f"score {score} / {t}")
