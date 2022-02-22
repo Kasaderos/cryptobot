@@ -3,7 +3,28 @@ import numpy as np
 from datetime import datetime, timedelta, date
 import time
 import numpy as np
-from sklearn.linear_model import LinearRegression
+from model import LM
+
+class Cache:
+    def __init__(self, sum, alpha):
+        self.crypto = 0
+        self.dollars = sum
+        self.coms = alpha
+
+    def buy(self, q):
+        p = client.get_avg_price(symbol=PAIR)
+        s = p * q
+        assert s >= 10 # BTC-USD
+        self.dollars -= '%.2f'%(s * (1 + self.coms))
+        self.crypto ='%.6f'%(q) 
+
+    def sell(self, q):
+        assert self.crypto >= q
+        p = client.get_avg_price(symbol=PAIR)
+        s = p * q
+        assert s >= 10
+        self.crypto -= '%.6f'%(q)
+        self.dollars = '%.2f'%(s)
 
 def get_data():
     '''
@@ -29,104 +50,69 @@ def get_data():
     df = np.array(df)
     times = [datetime(1970, 1, 1) + timedelta(milliseconds=int(ms))
             for ms in df[:, 6]]
-    close = df[:, 4]
+    # open
+    prices = df[:, 1]
 
     assert times[len(times)-1].day == date.today().day
-    return times, close
+    return np.array(times), np.array(prices).astype(np.float64)
 
 def predict():
-    p = 30
-    _, X = get_data()
-    # 1 2 3 4 5
-    # 1 2 3
-    #   2 3 4
-    #     3 4 5
+    p = 5 
+    _, ts = get_data()
 
-    # X       y
-    # 1 2 3   4
-    # 2 3 4   5
-    # 3 4 5   6
-    X = np.array([X[i:i+p] for i in range(len(X)-p)])
-    y = np.array([X[i] for i in range(p+1, len(X)-p+1)])
-    reg = LinearRegression().fit(X, y)
-    print(reg.score(X, y))
-    preds = [0] * p
-    past = X[len(X)-p:]
-    value = None
-    for i in range(p):
-        value = reg.predict(np.array([past]))
-        preds[i] = value
-        np.concatenate(past, value)
-        past = past[1:]
+    preds = LM(ts, p)
+    print(preds)
+    return preds[len(preds)-1]
 
-    return value
-
-def wait():
-    while True:
-        orders = client.get_all_orders()
-        if len(orders) == 0:
-            return 
+def get_price():
+    d = client.get_avg_price(symbol=PAIR)
+    return float(d['price'])
 
 def open_position():
     global last_price
     while True:
         predPrice = predict()
-        price = client.get_avg_price(symbol=PAIR)
+        price = get_price()
         # long position
-        if predPrice > price and 1 - price/predPrice < eps:
+        if predPrice > price and 1 - price/predPrice < profit:
             try:
-                client.create_order(symbol=PAIR,
-                    side=Client.SIDE_BUY,
-                    type=Client.ORDER_TYPE_MARKET,
-                    quantity=CACHE/price)
-                wait()        
+                cache.buy(10.0)
                 return price
             except Exception as e:
                 print(e)
         time.sleep(10)
 
 def close_position(buy_price):
-    cache = client.get_asset_balance(CURRENCY)
     while True:
-        price = client.get_avg_price(symbol=PAIR)
+        price = get_price()
         if price >= buy_price:
             try:
-                client.create_order(
-                    symbol=PAIR,
-                    side=Client.SIDE_SELL,
-                    type=Client.ORDER_TYPE_MARKET,
-                    quantity=cache
-                )
-                wait()
+                cache.sell(cache.crypto)
                 return
             except Exception as e:
                 print(e)
-        time.sleep(10)
+        time.sleep(SLEEP_DURATION)
 
 api_key = ''
 api_secret = ''
 CURRENCY = 'BTC'
 PAIR = 'BTCUSDT'
-INTERVAL = Client.KLINE_INTERVAL_4HOUR
-CACHE = 11 # dollars
+INTERVAL = Client.KLINE_INTERVAL_5MINUTE
+SUM = 11 # dollars
+SLEEP_DURATION = 10 # secs
+
+# buffer
 last_price = None
 
-client = Client(api_key, api_secret)
-eps = 0.01
-print(client.get_asset_balance(CURRENCY))
-'''
-while True:
-    open_price = open_position()
-    close_position(open_price)
-    cache = client.get_asset_balance('USDT')
-    print(f"[bot] cache {cache}")
-'''
-# # place a test market buy order, to place an actual order use the create_order function
-# order = client.create_test_order(
-#     symbol='BNBBTC',
-#     side=Client.SIDE_BUY,
-#     type=Client.ORDER_TYPE_MARKET,
-#     quantity=100)
+profit = 0.003
+coms = 0.001
 
-# # get all symbol prices
-# prices = client.get_all_tickers()
+client = Client(api_key, api_secret)
+   
+if __name__ == '__main__':
+    cache = Cache(SUM, coms)
+    print(f"{cache.dollars} $")
+    while True:
+        open_price = open_position()
+        close_position(open_price)
+        print(f"[bot] {cache.dollars} $")
