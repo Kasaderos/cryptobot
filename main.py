@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, date
 import time
 import numpy as np
 from model import LM
+import sys
 
 class Cache:
     def __init__(self, sum, alpha):
@@ -94,7 +95,7 @@ CURRENCY = 'BTC'
 PAIR = 'BTCUSDT'
 INTERVAL = Client.KLINE_INTERVAL_5MINUTE
 SUM = 11 # dollars
-SLEEP_DURATION = 4 * 60 * 60 # secs
+SLEEP_DURATION = 5 * 60 # secs
 
 BULL = True
 profit = 0.003
@@ -107,6 +108,7 @@ if __name__ == '__main__':
     t = 0
     while True:
         lastPrice = open_position()
+        sys.stdout.flush()
         close_position(lastPrice)
         t += 1
         print(f"score {score} / {t}")
