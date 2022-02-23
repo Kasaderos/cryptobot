@@ -47,20 +47,16 @@ def get_data():
     '''
     df = client.get_klines(
         symbol='BTCUSDT', interval=INTERVAL, limit=1000)
-    df = np.array(df)
+    assert len(df) > 0
+    df = np.array([np.array(row).astype(np.float64) for row in df])
     times = [datetime(1970, 1, 1) + timedelta(milliseconds=int(ms))
             for ms in df[:, 6]]
-    prices = df[:, 4]
-
     assert times[len(times)-1].day == date.today().day
-    return np.array(times), np.array(prices).astype(np.float64)
+    return times, df
 
 def predict():
-    _, ts = get_data()
-    p1 = ts[-3]
-    p2 = ts[-2]
-    p3 = ts[-1]
-    return p3 + p3 * ((1 - p2 / p3)/2 + (1- p1/p3))/2
+    _, df = get_data()
+    return LM(df)
 
 
 def get_price():
@@ -98,7 +94,7 @@ CURRENCY = 'BTC'
 PAIR = 'BTCUSDT'
 INTERVAL = Client.KLINE_INTERVAL_5MINUTE
 SUM = 11 # dollars
-SLEEP_DURATION = 5 * 60 # secs
+SLEEP_DURATION = 4 * 60 * 60 # secs
 
 BULL = True
 profit = 0.003
