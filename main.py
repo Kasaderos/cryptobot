@@ -50,19 +50,18 @@ def get_data():
     df = np.array(df)
     times = [datetime(1970, 1, 1) + timedelta(milliseconds=int(ms))
             for ms in df[:, 6]]
-    # open
-    prices = df[:, 1]
+    prices = df[:, 4]
 
     assert times[len(times)-1].day == date.today().day
     return np.array(times), np.array(prices).astype(np.float64)
 
 def predict():
-    p = 1 
     _, ts = get_data()
+    p1 = ts[-3]
+    p2 = ts[-2]
+    p3 = ts[-1]
+    return p3 + p3 * ((1 - p2 / p3)/2 + (1- p1/p3))/2
 
-    preds = LM(ts, p)
-    print(preds)
-    return preds[len(preds)-1]
 
 def get_price():
     d = client.get_avg_price(symbol=PAIR)

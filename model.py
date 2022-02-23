@@ -18,4 +18,3 @@ def LM(ts, p):
         past = past[1:]
 
     return preds
-
