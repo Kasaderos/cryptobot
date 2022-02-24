@@ -87,6 +87,7 @@ def close_position(lastPrice):
     price = get_price()
     if lastPrice is None:
         print(f"? {price}")
+        score += 1
         return 
 
     if price >= lastPrice and BULL or price < lastPrice and not BULL:
