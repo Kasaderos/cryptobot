@@ -101,9 +101,9 @@ api_key = ''
 api_secret = ''
 CURRENCY = 'BTC'
 PAIR = 'BTCUSDT'
-INTERVAL = Client.KLINE_INTERVAL_3MINUTE
+INTERVAL = Client.KLINE_INTERVAL_15MINUTE
 SUM = 11 # dollars
-SLEEP_DURATION = 3 * 60 # secs
+SLEEP_DURATION = 15 * 60 # secs
 
 BULL = True
 profit = 0.003
