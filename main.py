@@ -64,10 +64,14 @@ def get_price():
     d = client.get_avg_price(symbol=PAIR)
     return float(d['price'])
 
+
 def open_position():
     global BULL
     predPrice = predict()
     price = get_price()
+    if abs(1 - price/predPrice) < 0.003:
+        print(f"? {predPrice} {price}")
+        return None 
     # long position
     if predPrice >= price:
         BULL = True
@@ -75,13 +79,16 @@ def open_position():
     else:
         BULL = False 
         print(f"down {predPrice} {price}")
-    time.sleep(SLEEP_DURATION)
     return price
         
 
 def close_position(lastPrice):
     global score
     price = get_price()
+    if lastPrice is None:
+        print(f"? {price}")
+        return 
+
     if price >= lastPrice and BULL or price < lastPrice and not BULL:
         score += 1
         print(f"+ {price}")
@@ -93,9 +100,9 @@ api_key = ''
 api_secret = ''
 CURRENCY = 'BTC'
 PAIR = 'BTCUSDT'
-INTERVAL = Client.KLINE_INTERVAL_5MINUTE
+INTERVAL = Client.KLINE_INTERVAL_3MINUTE
 SUM = 11 # dollars
-SLEEP_DURATION = 5 * 60 # secs
+SLEEP_DURATION = 3 * 60 # secs
 
 BULL = True
 profit = 0.003
@@ -109,6 +116,7 @@ if __name__ == '__main__':
     while True:
         lastPrice = open_position()
         sys.stdout.flush()
+        time.sleep(SLEEP_DURATION)
         close_position(lastPrice)
         t += 1
         print(f"score {score} / {t}")
