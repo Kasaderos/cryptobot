@@ -13,19 +13,25 @@ class Cache:
         self.coms = alpha
 
     def buy(self, q):
-        p = client.get_avg_price(symbol=PAIR)
+        p = get_price()
         s = p * q
         assert s >= 10 # BTC-USD
-        self.dollars -= '%.2f'%(s * (1 + self.coms))
-        self.crypto ='%.6f'%(q) 
+        self.dollars -= float('%.2f'%(s * (1 + self.coms)))
+        self.crypto += float('%.6f'%(q))
+        print(f"[buy] {self.crypto} {self.dollars}")
 
     def sell(self, q):
         assert self.crypto >= q
-        p = client.get_avg_price(symbol=PAIR)
+        p = get_price()
         s = p * q
         assert s >= 10
-        self.crypto -= '%.6f'%(q)
-        self.dollars = '%.2f'%(s)
+        self.crypto -= float('%.6f'%(q))
+        self.dollars += float('%.2f'%(s))
+        print(f"[sell] {self.crypto} {self.dollars}")
+
+    def all_money(self):
+        p = get_price()
+        return p * self.crypto + self.dollars
 
 def get_data():
     '''
@@ -69,12 +75,13 @@ def open_position():
     global BULL
     predPrice = predict()
     price = get_price()
-    if abs(1 - price/predPrice) < 0.003:
+    if abs(1 - price/predPrice) < profit:
         print(f"? {predPrice} {price}")
         return None 
     # long position
     if predPrice >= price:
         BULL = True
+        cache.buy(20/price)
         print(f"up {predPrice} {price}")
     else:
         BULL = False 
@@ -90,6 +97,8 @@ def close_position(lastPrice):
         score += 1
         return 
 
+    if cache.crypto >= 1e-6:
+        cache.sell(cache.crypto)
     if price >= lastPrice and BULL or price < lastPrice and not BULL:
         score += 1
         print(f"+ {price}")
@@ -101,16 +110,18 @@ api_key = ''
 api_secret = ''
 CURRENCY = 'BTC'
 PAIR = 'BTCUSDT'
-INTERVAL = Client.KLINE_INTERVAL_15MINUTE
-SUM = 11 # dollars
-SLEEP_DURATION = 15 * 60 # secs
+INTERVAL = Client.KLINE_INTERVAL_5MINUTE
+SUM = 1000 # dollars
+SLEEP_DURATION = 1 * 60 # secs
 
 BULL = True
-profit = 0.003
-coms = 0.001
+profit = 0.001
+coms = 0.0005
 
 client = Client(api_key, api_secret)
 score = 0
+
+cache = Cache(SUM, coms)
 
 if __name__ == '__main__':
     t = 0
@@ -120,4 +131,4 @@ if __name__ == '__main__':
         time.sleep(SLEEP_DURATION)
         close_position(lastPrice)
         t += 1
-        print(f"score {score} / {t}")
+        print(f"score {score} / {t} {cache.all_money()}")
